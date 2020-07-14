@@ -2,35 +2,30 @@ const express = require('express');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const cors = require('cors');
+const mongoose = require('mongoose');
+const logs = require('./api/logs');
+const middlewares = require('./middlewares');
+
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 1337;
 
+mongoose.connect(process.env.DATABASE_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
 app.use(morgan('common'));
 app.use(helmet());
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({ origin: process.env.CROSS_ORIGIN }));
 
-app.listen(PORT);
-
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Hello World',
-  });
+app.listen(PORT, () => {
+  console.log(`App is running on port: ${PORT}`);
 });
 
-app.use((req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
-  next(error);
-});
+app.use(logs);
 
-// eslint-disable-next-line no-unused-vars
-app.use((error, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
-  res.json({
-    message: error.message,
-    stack:
-      process.env.NODE_ENV === 'production' ? 'silence is golden' : error.stack,
-  });
-});
+app.use(middlewares.notFound);
+
+app.use(middlewares.errorHandler);
